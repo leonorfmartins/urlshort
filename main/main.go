@@ -3,13 +3,21 @@ package main
 import (
 	"fmt"
 	"net/http"
-
+	"flag"
+	"io/ioutil"
 	"github.com/gophercises/urlshort"
 )
 
 func main() {
 	mux := defaultMux()
+	yaml := flag.String("yaml", "../url.yaml", "Yaml file with ulrs")
+	json := flag.String("json", "../url.json", "Url short in json format")
+	flag.Parse()
 
+	yamlContent, err := ioutil.ReadFile(*yaml)
+	if err != nil {
+		panic(err)
+	}
 	// Build the MapHandler using the mux as the fallback
 	pathsToUrls := map[string]string{
 		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
@@ -19,13 +27,7 @@ func main() {
 
 	// Build the YAMLHandler using the mapHandler as the
 	// fallback
-	yaml := `
-- path: /urlshort
-  url: https://github.com/gophercises/urlshort
-- path: /urlshort-final
-  url: https://github.com/gophercises/urlshort/tree/solution
-`
-	yamlHandler, err := urlshort.YAMLHandler([]byte(yaml), mapHandler)
+	yamlHandler, err := urlshort.YAMLHandler(yamlContent, mapHandler)
 	if err != nil {
 		panic(err)
 	}
