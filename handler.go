@@ -12,7 +12,7 @@ import (
 // that each key in the map points to, in string format).
 // If the path is not provided in the map, then the fallback
 // http.Handler will be called instead.
-func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
+func MapHandler(pathsToUrls MappedUrl, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if url, ok := pathsToUrls[r.URL.Path]; ok {
 			http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -23,7 +23,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 }
 
 // YAMLHandler will parse the provided YAML and then return
-// an http.HandlerFunc (which also implements http.Handler)
+// an http.HandlerFunc (which also implements90 http.Handler)
 // that will attempt to map any paths to their corresponding
 // URL. If the path is not provided in the YAML, then the
 // fallback http.Handler will be called instead.
@@ -39,34 +39,30 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 
-func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	// var p = P{}
-	l := make([]map[string]string, 0)
+type MappedUrl map[string]string
+
+func YAMLHandler(yml []byte, fallback http.Handler) (http.Handler, error) {
+	var l []MappedUrl
 	err := yaml.Unmarshal(yml, &l)
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[string]string)
+	m := make(MappedUrl)
 	for _, v := range l {
-		m[v["path"]] = v["url"] 
+		m[v["path"]] = v["url"]
 	} 
 	return MapHandler(m, fallback), nil
 }
 
-type MappedUrl struct {
-	Path string
-	Url string
-}
-
-func JSONHandler(urls []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	var m []map[string]string
+func JSONHandler(urls []byte, fallback http.Handler) (http.Handler, error) {
+	var m []MappedUrl
 	err := json.Unmarshal(urls, &m)
 	if err != nil {
 		return nil, err
 	}
-	u := make(map[string]string)
+	u := make(MappedUrl)
 	for _, v := range m {
-		u[v["path"]] = u["url"]
+		u[v["path"]] = v["url"]
 	}
 	
 	return MapHandler(u, fallback), nil

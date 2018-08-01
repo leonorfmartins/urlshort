@@ -9,35 +9,54 @@ import (
 )
 
 func main() {
-	mux := defaultMux()
-	yaml := flag.String("yaml", "../url.yaml", "Yaml file with ulrs")
-	json := flag.String("json", "../url.json", "Url short in json format")
+	yamlPath := flag.String("yaml", "../url.yaml", "Yaml file with ulrs")
+	jsonPath := flag.String("json", "", "Path to json file")
 	flag.Parse()
 
-	yamlContent, err := ioutil.ReadFile(*yaml)
+	fmt.Println("Starting the server on :8080")
+	mux := handleDataSource(*jsonPath, *yamlPath)
+	http.ListenAndServe(":8080", mux)
+}
+
+func handleDataSource(jsonPath string, yamlPath string) http.Handler {
+	mux := defaultMux()
+	pathsToUrls := urlshort.MappedUrl{
+		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
+	}
+	mapHandler := urlshort.MapHandler(pathsToUrls, mux)
+	if jsonPath != "" {
+		return handleJson(jsonPath, mapHandler)
+	}
+	return handleYaml(yamlPath, mapHandler)
+}
+
+func handleYaml(yamlPath string, mapHandler http.HandlerFunc) http.Handler {
+	yamlContent, err := ioutil.ReadFile(yamlPath)
 	if err != nil {
 		panic(err)
 	}
-	// Build the MapHandler using the mux as the fallback
-	pathsToUrls := map[string]string{
-		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
-		"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
-	}
-	mapHandler := urlshort.MapHandler(pathsToUrls, mux)
-
-	// Build the YAMLHandler using the mapHandler as the
-	// fallback
 	yamlHandler, err := urlshort.YAMLHandler(yamlContent, mapHandler)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Starting the server on :8080")
-	http.ListenAndServe(":8080", yamlHandler)
+	return yamlHandler
+}
+
+func handleJson(jsonPath string, mapHandler http.HandlerFunc) http.Handler {
+	jsonFile, err := ioutil.ReadFile(jsonPath)
+	if err != nil {
+		panic(err)
+	}
+	jsonHandler, err := urlshort.YAMLHandler(jsonFile, mapHandler)
+	if err != nil {
+		panic(err)
+	}
+	return jsonHandler
 }
 
 func defaultMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", hello)
+	mux.HandleFunc("/hello", hello)
 	return mux
 }
 
